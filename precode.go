@@ -1,11 +1,11 @@
 package main
 
 import (
-    "net/http"
-    "net/http/httptest"
-    "strconv"
-    "strings"
-    "testing"
+	"net/http"
+	"net/http/httptest"
+	"strconv"
+	"strings"
+	"testing"
 )
 
 var cafeList = map[string][]string{
@@ -46,13 +46,44 @@ func mainHandle(w http.ResponseWriter, req *http.Request) {
     w.Write([]byte(answer))
 }
 
-func TestMainHandlerWhenCountMoreThanTotal(t *testing.T) {
-    totalCount := 4
-    req := ... // здесь нужно создать запрос к сервису
-
+func getResponse(url string) *httptest.ResponseRecorder {
+	req := httptest.NewRequest("GET", url, nil) 
+    // здесь нужно создать запрос к сервису
     responseRecorder := httptest.NewRecorder()
     handler := http.HandlerFunc(mainHandle)
     handler.ServeHTTP(responseRecorder, req)
-
+    return responseRecorder
     // здесь нужно добавить необходимые проверки
+}
+func TestMainHandlerWhenOk(t *testing.T) {
+responseRecorder := getResponse("/cafe?count=2&city=moscow")
+expectedCode := http.StatusOK
+expectedCount := 2
+
+assert.Equal(t, expectedCode, responseRecorder.Code)
+require.NotEmpty(t, responseRecorder.Body)
+body := strings.Split(responseRecorder.Body.String(), ",")
+assert.Len(t, body, expectedCount)
+}
+
+func TestMainHandlerWhenWrongCity(t *testing.T) {
+expectedBody := `wrong city value`
+responseRecorder := getResponse("/cafe?count=2&city=omsk")
+expectedCode := http.StatusBadRequest
+
+assert.Equal(t, expectedCode, responseRecorder.Code)
+require.NotEmpty(t, responseRecorder.Body)
+body := responseRecorder.Body.String()
+assert.Equal(t, expectedBody, body)
+}
+
+func TestMainHandlerWhenCountMoreThanTotal(t *testing.T) {
+responseRecorder := getResponse("/cafe?count=10&city=moscow")
+expectedCode := http.StatusOK
+expectedCount := 4
+
+assert.Equal(t, expectedCode, responseRecorder.Code)
+require.NotEmpty(t, responseRecorder.Body)
+body := strings.Split(responseRecorder.Body.String(), ",")
+assert.Len(t, body, expectedCount)
 }
